@@ -22,10 +22,10 @@ public class FlightSearch {
 	private String destination;
 	
 	@NotNull(message="source is mandatory")
-	@JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "dd-MM-yyyy")
+	@JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "dd-MM-yyyy hh:mm")
 	private Date departDate;
 	
-	@JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "dd-MM-yyyy")
+	@JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "dd-MM-yyyy hh:mm")
 	private Date returnDate;
 	
 	@NotNull(message="roundtrip is mandatory")

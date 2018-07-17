@@ -13,4 +13,8 @@ public interface TravelRouteRepository extends MongoRepository<TravelRoute, Stri
 
 	@Query("{'$and' : [{'sourceCity.cityCode' : ?0 },{'destinationCity.cityCode' :?1}]}")
 	public List<TravelRoute> findBySourceAndDestination(String soruce,String destination);
+	
+	@Query("{'flightId' : { '$in' : [ ?0 ]}}")
+	public List<TravelRoute> findByFlightId(String flightId);
+	
 }

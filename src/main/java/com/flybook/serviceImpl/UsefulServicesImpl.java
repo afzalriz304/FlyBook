@@ -23,35 +23,33 @@ import com.flybook.service.UsefulServices;
 import com.google.gson.Gson;
 
 @Component
-public class UsefulServicesImpl implements UsefulServices{
-	
+public class UsefulServicesImpl implements UsefulServices {
+
 	@Autowired
 	private TravelRouteRepository travelRouteRepository;
-	
-	
+
 	@Autowired
 	private FlightRepository flightRepository;
 
 	@Override
 	public List<HashMap<String, String>> FetchError(BindingResult bindingResult) {
-		List<HashMap<String, String>> error	=	new ArrayList<>();
-		HashMap<String, String> map	= null;	
-		List<FieldError> errorList	=	bindingResult.getFieldErrors();
-		for(FieldError err: errorList){
-			map	=	new HashMap<>();;
+		ArrayList<HashMap<String, String>> error = new ArrayList<HashMap<String, String>>();
+		List<FieldError> errorList = bindingResult.getFieldErrors();
+		errorList.forEach(err -> {
+			HashMap<String, String> map = new HashMap<>();
 			map.put(err.getField(), err.getDefaultMessage());
 			error.add(map);
-		}
+		});
 		return error;
 	}
 
 	@Override
 	public CustomResponse addFlightByAirline(Flights flights) {
-		
-		Calendar calendar	=	Calendar.getInstance();
+
+		Calendar calendar = Calendar.getInstance();
 		Flights flight = null;
-		
-		TravelRoute travelRoute	=	null;
+
+		TravelRoute travelRoute = null;
 		flight = Flights.builder().airlines(flights.getAirlines()).arrivalDate(flights.getArrivalDate())
 				.departureDate(flights.getDepartureDate()).baseFare(flights.getBaseFare())
 				.flightId(flights.getFlightId())
@@ -61,55 +59,51 @@ public class UsefulServicesImpl implements UsefulServices{
 						.cityName(flights.getTeriminatingCity().getCityName()).build())
 				.connectingCities(flights.getConnectingCities()).days(flights.getDays())
 				.connectingFlight(flights.isConnectingFlight()).build();
-		
-		
-		List<TravelRoute> flightSearch =null;
-		
-		flightSearch	=	this.travelRouteRepository.findBySourceAndDestination(flights.getSourceCity().getCityCode(), flights.getTeriminatingCity().getCityCode());
-		if(flightSearch.isEmpty()){
-			travelRoute	=	new TravelRoute();
-			travelRoute.setId(FlyBookConstant.RT+calendar.getTimeInMillis());
-		}else{
-			travelRoute	=	this.travelRouteRepository.findOne(flightSearch.get(0).getId());
+
+		List<TravelRoute> flightSearch = null;
+
+		flightSearch = this.travelRouteRepository.findBySourceAndDestination(flights.getSourceCity().getCityCode(),
+				flights.getTeriminatingCity().getCityCode());
+		if (flightSearch.isEmpty()) {
+			travelRoute = new TravelRoute();
+			travelRoute.setId(FlyBookConstant.RT + calendar.getTimeInMillis());
+		} else {
+			travelRoute = this.travelRouteRepository.findOne(flightSearch.get(0).getId());
 		}
-		
-		
-		
-		
-		List<String> list	=	travelRoute.getFlightId();
-		if(list==null)
-			list	=	new ArrayList<String>();
-		
+
+		List<String> list = travelRoute.getFlightId();
+		if (list == null)
+			list = new ArrayList<String>();
+
 		list.add(flights.getFlightId());
-		
+
 		travelRoute.setDestinationCity(flights.getTeriminatingCity());
 		travelRoute.setSourceCity(flights.getSourceCity());
 		travelRoute.setFlightId(list);
-		
-		
-		
+
 		this.travelRouteRepository.save(travelRoute);
 		this.flightRepository.save(flight);
-		
-		return CustomResponse.builder().status(true).message(FlyBookConstant.FLIGHT_ADDED_SUCCESSFULLY).data(flights.getFlightId()).build();
-		
+
+		return CustomResponse.builder().status(true).message(FlyBookConstant.FLIGHT_ADDED_SUCCESSFULLY)
+				.data(flights.getFlightId()).build();
+
 	}
 
 	@Override
 	public boolean cityValidation(String source, String destination) {
-		
-		if(source.equalsIgnoreCase(destination))
+
+		if (source.equalsIgnoreCase(destination))
 			return true;
-		
+
 		return false;
 	}
 
 	@Override
 	public boolean dateValidation(Date departDate, Date returnDate) {
-		
-		if(returnDate.before(departDate))
+
+		if (returnDate.before(departDate) || returnDate.equals(departDate))
 			return true;
-		
+
 		return false;
 	}
 
@@ -123,8 +117,5 @@ public class UsefulServicesImpl implements UsefulServices{
 			return null;
 		}
 	}
-	
-	
 
-	
 }

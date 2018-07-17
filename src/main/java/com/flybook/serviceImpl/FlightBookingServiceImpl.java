@@ -40,32 +40,37 @@ public class FlightBookingServiceImpl implements FlightBookingService {
 		boolean cityValidation = false;
 		Date now = new Date();
 
-		Flights flightCheck = this.flightRepository.findOne(flights.getFlightId());
-		if (flightCheck != null)
-			return CustomResponse.builder().status(false).message(FlyBookConstant.ALREADY_ON_RUN)
-					.data(flights.getFlightId()).build();
+		try {
+			logger.info(flights.toString());
+			Flights flightCheck = this.flightRepository.findOne(flights.getFlightId());
+			if (flightCheck != null)
+				return CustomResponse.builder().status(false).message(FlyBookConstant.ALREADY_ON_RUN)
+						.data(flights.getFlightId()).build();
 
-		logger.info(flights.toString());
+			if (flights.getDepartureDate().before(now))
+				return CustomResponse.builder().status(false).message(FlyBookConstant.Old_Date)
+						.data(flights.getDepartureDate()).build();
 
-		if (flights.getDepartureDate().before(now))
-			return CustomResponse.builder().status(false).message(FlyBookConstant.Old_Date)
-					.data(flights.getDepartureDate()).build();
+			dateValidation = this.usefulService.dateValidation(flights.getDepartureDate(), flights.getArrivalDate());
 
-		dateValidation = this.usefulService.dateValidation(flights.getDepartureDate(), flights.getArrivalDate());
+			if (dateValidation)
+				return CustomResponse.builder().status(false).message(FlyBookConstant.INVALID_ARRIVAL_DATE)
+						.data(flights.getArrivalDate()).build();
 
-		if (dateValidation)
-			return CustomResponse.builder().status(false).message(FlyBookConstant.INVALID_ARRIVAL_DATE)
-					.data(flights.getArrivalDate()).build();
+			cityValidation = this.usefulService.cityValidation(flights.getSourceCity().getCityCode(),
+					flights.getTeriminatingCity().getCityCode());
 
-		cityValidation = this.usefulService.cityValidation(flights.getSourceCity().getCityCode(),
-				flights.getTeriminatingCity().getCityCode());
+			if (cityValidation) {
+				return CustomResponse.builder().status(false).message(FlyBookConstant.SAME_CITY)
+						.data(flights.getSourceCity().getCityName()).build();
+			}
 
-		if (cityValidation) {
-			return CustomResponse.builder().status(false).message(FlyBookConstant.SAME_CITY)
-					.data(flights.getSourceCity().getCityName()).build();
+			return this.usefulService.addFlightByAirline(flights);
+			
+		} catch (Exception e) {
+			return CustomResponse.builder().status(false).message(FlyBookConstant.SOMETHING_WENT_WRONG)
+					.data(e.toString()).build();
 		}
-
-		return this.usefulService.addFlightByAirline(flights);
 
 	}
 
@@ -79,61 +84,68 @@ public class FlightBookingServiceImpl implements FlightBookingService {
 		List<Flights> oneWayflightList = new ArrayList<>();
 		List<Flights> roundWayflightList = new ArrayList<>();
 
-		if (flightSearch.getDepartDate().before(now))
-			return CustomResponse.builder().status(false).message(FlyBookConstant.Old_Date)
-					.data(flightSearch.getDepartDate()).build();
+		try {
+			if (flightSearch.getDepartDate().before(now))
+				return CustomResponse.builder().status(false).message(FlyBookConstant.Old_Date)
+						.data(flightSearch.getDepartDate()).build();
 
-		if (flightSearch.isRoundtrip())
-			dateValidation = this.usefulService.dateValidation(flightSearch.getDepartDate(),
-					flightSearch.getReturnDate());
+			if (flightSearch.isRoundtrip())
+				dateValidation = this.usefulService.dateValidation(flightSearch.getDepartDate(),
+						flightSearch.getReturnDate());
 
-		if (dateValidation)
-			return CustomResponse.builder().status(false).message(FlyBookConstant.INVALID_RETURN_DATE)
-					.data(flightSearch.getReturnDate()).build();
+			if (dateValidation)
+				return CustomResponse.builder().status(false).message(FlyBookConstant.INVALID_RETURN_DATE)
+						.data(flightSearch.getReturnDate()).build();
 
-		cityValidation = this.usefulService.cityValidation(flightSearch.getSource(), flightSearch.getDestination());
-		if (cityValidation) {
-			return CustomResponse.builder().status(false).message(FlyBookConstant.SAME_CITY)
-					.data(flightSearch.getSource()).build();
-		}
-
-		List<TravelRoute> listTravelRoute = this.travelRouteRepository
-				.findBySourceAndDestination(flightSearch.getSource(), flightSearch.getDestination());
-
-		if (flightSearch.isRoundtrip())
-			returnList = this.travelRouteRepository.findBySourceAndDestination(flightSearch.getDestination(),
-					flightSearch.getSource());
-
-		if (listTravelRoute.size() > 0) {
-			for (String flightId : listTravelRoute.get(0).getFlightId()) {
-				Flights flight = this.flightRepository.findOne(flightId);
-				Date requiredDate = this.usefulService.setDateFormatYYYY_MM_DD(flight.getDepartureDate());
-				Date flightDate = this.usefulService.setDateFormatYYYY_MM_DD(flightSearch.getDepartDate());
-				if (requiredDate.equals(flightDate))
-					oneWayflightList.add(flight);
+			cityValidation = this.usefulService.cityValidation(flightSearch.getSource(), flightSearch.getDestination());
+			if (cityValidation) {
+				return CustomResponse.builder().status(false).message(FlyBookConstant.SAME_CITY)
+						.data(flightSearch.getSource()).build();
 			}
 
-			if (returnList!=null) {
-				if (flightSearch.isRoundtrip() && flightSearch.getReturnDate() != null) {
-					for (String flightId : returnList.get(0).getFlightId()) {
-						Flights flight = this.flightRepository.findOne(flightId);
-						Date requiredDate = this.usefulService.setDateFormatYYYY_MM_DD(flight.getDepartureDate());
-						Date flightDate = this.usefulService.setDateFormatYYYY_MM_DD(flightSearch.getReturnDate());
-						if (requiredDate.equals(flightDate))
-							roundWayflightList.add(flight);
-					}
+			List<TravelRoute> listTravelRoute = this.travelRouteRepository
+					.findBySourceAndDestination(flightSearch.getSource(), flightSearch.getDestination());
+
+			if (flightSearch.isRoundtrip())
+				returnList = this.travelRouteRepository.findBySourceAndDestination(flightSearch.getDestination(),
+						flightSearch.getSource());
+
+			if (listTravelRoute!=null && listTravelRoute.size()>0) {
+				logger.info("searching for one way fight");
+				for (String flightId : listTravelRoute.get(0).getFlightId()) {
+					Flights flight = this.flightRepository.findOne(flightId);
+					Date requiredDate = this.usefulService.setDateFormatYYYY_MM_DD(flight.getDepartureDate());
+					Date flightDate = this.usefulService.setDateFormatYYYY_MM_DD(flightSearch.getDepartDate());
+					if (requiredDate.equals(flightDate))
+						oneWayflightList.add(flight);
 				}
 
-				return CustomResponse.builder().status(true).message(FlyBookConstant.FLIGHT_FOUNDS)
-						.data(RoundTrip.builder().oneWay(oneWayflightList).roundWay(roundWayflightList).build())
-						.build();
-			}
+				if (returnList!=null) {
+					if (flightSearch.isRoundtrip() && flightSearch.getReturnDate() != null) {
+						logger.info("searching for returning fight");
+						for (String flightId : returnList.get(0).getFlightId()) {
+							Flights flight = this.flightRepository.findOne(flightId);
+							Date requiredDate = this.usefulService.setDateFormatYYYY_MM_DD(flight.getDepartureDate());
+							Date flightDate = this.usefulService.setDateFormatYYYY_MM_DD(flightSearch.getReturnDate());
+							if (requiredDate.equals(flightDate))
+								roundWayflightList.add(flight);
+						}
+					}
 
-			return CustomResponse.builder().status(true).message(FlyBookConstant.FLIGHT_FOUNDS).data(oneWayflightList)
-					.build();
-		} else {
-			return CustomResponse.builder().status(true).message(FlyBookConstant.NO_FLIGHT_FOUNDS)
-					.data(oneWayflightList).build();
+					return CustomResponse.builder().status(true).message(FlyBookConstant.FLIGHT_FOUNDS)
+							.data(RoundTrip.builder().oneWay(oneWayflightList).roundWay(roundWayflightList).build())
+							.build();
+				}
+
+				return CustomResponse.builder().status(true).message(FlyBookConstant.FLIGHT_FOUNDS).data(oneWayflightList)
+						.build();
+			} else {
+				return CustomResponse.builder().status(true).message(FlyBookConstant.NO_FLIGHT_FOUNDS)
+						.data(oneWayflightList).build();
+			}
+		} catch (Exception e) {
+			return CustomResponse.builder().status(false).message(FlyBookConstant.SOMETHING_WENT_WRONG)
+					.data(e.toString()).build();
 		}
 
 	}

@@ -35,23 +35,24 @@ public class MainController {
 	private UsefulServices usefulService;
 	@Autowired
 	private FlightBookingService flightBookingService;
-	
+
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	/***
 	 * Handle the exceptions
+	 * 
 	 * @param ex
 	 * @param request
 	 * @return
 	 */
 	@ExceptionHandler(HttpMessageNotReadableException.class)
 	public final ResponseEntity<CustomResponse> handleAllExceptions(Exception ex, WebRequest request) {
-		CustomResponse errorDetails = CustomResponse.builder().status(false).message(ex.getMessage()).data(request.getDescription(false))
-				.build();
-		
-	  return new ResponseEntity<CustomResponse>(errorDetails, HttpStatus.BAD_REQUEST);
+		CustomResponse errorDetails = CustomResponse.builder().status(false).message(ex.getMessage())
+				.data(request.getDescription(false)).build();
+
+		return new ResponseEntity<CustomResponse>(errorDetails, HttpStatus.BAD_REQUEST);
 	}
-	
+
 	/***
 	 * testing connection
 	 * 
@@ -80,21 +81,30 @@ public class MainController {
 
 				return CustomResponse.builder().status(false).message(FlyBookConstant.VALIDATION_FAILED).data(error)
 						.build();
-			} 
+			}
 			return flightBookingService.addFlight(flights);
-			//return CustomResponse.builder().status(false).message("Validation failed").data(null).build();
+			// return CustomResponse.builder().status(false).message("Validation
+			// failed").data(null).build();
 		} catch (Exception e) {
-			logger.info("exception");
-			return CustomResponse.builder().status(false).message(FlyBookConstant.SOMETHING_WENT_WRONG).data(e.toString()).build();
+			logger.error("exception occur");
+			return CustomResponse.builder().status(false).message(FlyBookConstant.SOMETHING_WENT_WRONG)
+					.data(e.toString()).build();
 		}
 	}
-	
+
+	/***
+	 * Search for Flight
+	 * 
+	 * @param flightSearch
+	 * @param errors
+	 * @return
+	 */
 	@PostMapping("/searchFlight")
-	public CustomResponse searchFlight(@Valid @RequestBody FlightSearch flightSearch,BindingResult errors){
-		
+	public CustomResponse searchFlight(@Valid @RequestBody FlightSearch flightSearch, BindingResult errors) {
+
 		List<HashMap<String, String>> error = null;
 		try {
-			
+
 			if (errors.hasErrors()) {
 				logger.info("validation error occurs in addFlightData");
 				error = usefulService.FetchError(errors);
@@ -105,7 +115,8 @@ public class MainController {
 			return flightBookingService.searchFlight(flightSearch);
 		} catch (Exception e) {
 			logger.info("exception occurs in searchFlight");
-			return CustomResponse.builder().status(false).message(FlyBookConstant.SOMETHING_WENT_WRONG).data(e.toString()).build();
+			return CustomResponse.builder().status(false).message(FlyBookConstant.SOMETHING_WENT_WRONG)
+					.data(e.toString()).build();
 		}
 	}
 

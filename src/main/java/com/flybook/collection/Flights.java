@@ -29,11 +29,11 @@ public class Flights {
 	private City teriminatingCity;
 	
 	@NotNull(message="departure date is compuslory")
-	@JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "dd-MM-yyyy")
+	@JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "dd-MM-yyyy hh:mm")
 	private Date departureDate;
 	
 	@NotNull(message="arrival date is compuslory")
-	@JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "dd-MM-yyyy")
+	@JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "dd-MM-yyyy hh:mm")
 	private Date arrivalDate;
 	
 	@NotNull(message="base fare is compuslory")
